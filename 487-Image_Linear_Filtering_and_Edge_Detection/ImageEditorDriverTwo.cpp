@@ -17,6 +17,16 @@
 
 #include "Image.h"
 
+struct center {
+  center(int in_row, int in_col) {
+    row = in_row;
+    col = in_col;
+  }
+
+  int row;
+  int col;
+};
+
 /**
  * @brief checks if a file is in the directory or not
  *
@@ -31,10 +41,68 @@ bool fileIsInDirectory(const string& filename) {
   return test_file.good();
 }
 
-void smoothImage(Image& img, const Image& kernel, int cent_row, int cent_col) {
+Image smoothImage(const Image& img, const Image& knl, center knl_cnt) {
+
+  // Result image to return
+  Image result(img.getRows(), img.getCols());
+
+  // Traverse over every pixel in the input image and convolute with kernel
+  for (int row = 0; row < img.getRows(); ++row) {
+    for (int col = 0; col < img.getCols(); ++col) {
+
+      int pix_knl_sum = 0;
+
+      // Row offset to correct for center
+      int row_offset = knl_cnt.row;
+
+      // For each pixel in kernel, apply the weights and find the sum
+      for (int knl_row = 0; knl_row < knl.getRows(); ++knl_row) {
+
+        // Column offset to correct for center
+        int col_offset = knl_cnt.col;
+
+        for (int knl_col = 0; knl_col < knl.getCols(); ++knl_col) {
+
+          // pix_knl_sum = img(corrected pix value) * knl weight
+          // Check to see if pixel will be outside of img
+          if (!pixelInImage(img, row - row_offset, col - col_offset)) {
 
 
+          } else {
 
+            // If within image, img(corrected pix) * knl weight
+            pix_knl_sum += img.getFloat(row - row_offset, col - col_offset) *
+              knl.getFloat(knl_row, knl_col);
+          }
+
+          // Decrement offset to subtract one less
+          --col_offset;
+        }
+        // Decrement offset to subtract one less
+        --row_offset;
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
+ * @brief Returns whether the given row and column are within the img dimensions
+ * 
+ * @pre n/a
+ * @post No change to objects
+ * 
+ * @param img image to test against
+ * @param row row of px to test for
+ * @param col col of px to test for
+ * @return true if (row,col) is within img dimensions
+ */
+bool pixelInImage(const Image& img, int row, int col) {
+  return !(row < 0 ||
+          col < 0 ||
+          row >= img.getRows() ||
+          col >= img.getCols());
 }
 
 /**
@@ -87,7 +155,6 @@ Image createYGradientKernel() {
   return y_grad_kernel;
 }
 
-
 int main(int argc, char* argv[]) {
 
   // Ends program is test1.gif is not found in the directory
@@ -110,14 +177,21 @@ int main(int argc, char* argv[]) {
   Image Sx_kernel = createSxKernel();
   Image Sy_kernel = createSyKernel();
 
-  // Smooth img n times with Sx (x kernel)
+  // Create struct variables holding center of the kernels
+  // This is applicable for both x knls and both y knls (smooth & grad)
+  center x_knl_cnt(0, 1);
+  center y_knl_cnt(1, 0);
 
+  // Smooth img n times with Sx (x kernel)
+  int smooth_iterations;
+  for (int i = 0; 0 < smooth_iterations; ++i) {
+    img = smoothImage(img, Sx_kernel, x_knl_cnt);
+  }
 
   // Smooth img n times with Sy (y kernel)
-
-
-
-
+  for (int i = 0; 0 < smooth_iterations; ++i) {
+    img = smoothImage(img, Sy_kernel, y_knl_cnt);
+  }
 
   // Output image back to bytes and create output file
   
