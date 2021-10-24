@@ -41,6 +41,32 @@ bool fileIsInDirectory(const string& filename) {
   return test_file.good();
 }
 
+/**
+ * @brief Returns whether the given row and column are within the img dimensions
+ *
+ * @pre n/a
+ * @post No change to objects
+ *
+ * @param img image to test against
+ * @param row row of px to test for
+ * @param col col of px to test for
+ * @return true if (row,col) is within img dimensions
+ */
+bool pixelInImage(const Image& img, int row, int col) {
+  return !(row < 0 ||
+           col < 0 ||
+           row > img.getRows() - 1 ||
+           col > img.getCols() - 1);
+}
+
+/**
+ * @brief applies linear filtering using passed in kernel
+ * 
+ * @param img input image to get original values from
+ * @param knl knl to obtain weighted values
+ * @param knl_cnt center of the kernel
+ * @return new image that has been filtered
+ */
 Image smoothImage(const Image& img, const Image& knl, center knl_cnt) {
 
   // Result image to return
@@ -50,7 +76,7 @@ Image smoothImage(const Image& img, const Image& knl, center knl_cnt) {
   for (int row = 0; row < img.getRows(); ++row) {
     for (int col = 0; col < img.getCols(); ++col) {
 
-      int pix_knl_sum = 0;
+      float pix_knl_sum = 0;
 
       // Row offset to correct for center
       int row_offset = knl_cnt.row;
@@ -66,13 +92,40 @@ Image smoothImage(const Image& img, const Image& knl, center knl_cnt) {
           // pix_knl_sum = img(corrected pix value) * knl weight
           // Check to see if pixel will be outside of img
           if (!pixelInImage(img, row - row_offset, col - col_offset)) {
+            
+            // Correct for row out of bounds
+            int row_correct = 0;
 
+            // If negative row
+            if (row - row_offset < 0) {
+              row_correct = 0 - (row - row_offset);
+
+              // If row is past max number of rows
+            } else if (row - row_offset > img.getRows() - 1) {
+              row_correct = -1 * (img.getRows() - 1 - row - row_offset);
+            }
+
+            // Correct for col out of bounds
+            int col_correct = 0;
+
+            if (col - col_offset < 0) {
+              col_correct = 0 - (col - col_offset);
+
+              // If col is past max number of rows
+            } else if (col - col_offset > img.getCols() - 1) {
+              col_correct = -1 * (img.getCols() - 1 - col - col_offset);
+            }
+            pix_knl_sum += (float)img.getFloat(row - row_offset + row_correct,
+                                        col - col_offset + col_correct) *
+              knl.getFloat(knl_row, knl_col);
+            result.setFloat(row, col, pix_knl_sum);
 
           } else {
 
             // If within image, img(corrected pix) * knl weight
-            pix_knl_sum += img.getFloat(row - row_offset, col - col_offset) *
+            pix_knl_sum += (float)img.getFloat(row - row_offset, col - col_offset) *
               knl.getFloat(knl_row, knl_col);
+            result.setFloat(row, col, pix_knl_sum);
           }
 
           // Decrement offset to subtract one less
@@ -85,24 +138,6 @@ Image smoothImage(const Image& img, const Image& knl, center knl_cnt) {
   }
 
   return result;
-}
-
-/**
- * @brief Returns whether the given row and column are within the img dimensions
- * 
- * @pre n/a
- * @post No change to objects
- * 
- * @param img image to test against
- * @param row row of px to test for
- * @param col col of px to test for
- * @return true if (row,col) is within img dimensions
- */
-bool pixelInImage(const Image& img, int row, int col) {
-  return !(row < 0 ||
-          col < 0 ||
-          row >= img.getRows() ||
-          col >= img.getCols());
 }
 
 /**
@@ -182,16 +217,17 @@ int main(int argc, char* argv[]) {
   center x_knl_cnt(0, 1);
   center y_knl_cnt(1, 0);
 
-  // Smooth img n times with Sx (x kernel)
-  int smooth_iterations;
-  for (int i = 0; 0 < smooth_iterations; ++i) {
+  // Smooth for iteration_num number of iterations to the output image
+  int iteration_num = 5;
+  for (int i = 0; i < iteration_num; ++i) {
     img = smoothImage(img, Sx_kernel, x_knl_cnt);
   }
 
-  // Smooth img n times with Sy (y kernel)
-  for (int i = 0; 0 < smooth_iterations; ++i) {
+  for (int i = 0; i < iteration_num; ++i) {
     img = smoothImage(img, Sy_kernel, y_knl_cnt);
   }
+
+  img.writeFloatImage("After smoothing.gif");
 
   // Output image back to bytes and create output file
   
