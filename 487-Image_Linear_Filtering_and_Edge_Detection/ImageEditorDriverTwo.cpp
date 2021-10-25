@@ -327,10 +327,10 @@ pixel interpolate(const Image& img, float d_col, float d_row) {
 
   // interpolate float value
   result.floatVal =
-    ((1 - alpha) * (1 - beta) * (img.getFloat(r, c))) +
-    (alpha * (1 - beta) * (img.getFloat(r, c_plus_one))) +
-    ((1 - alpha) * beta * (img.getFloat(r_plus_one, c))) +
-    (alpha * beta * (img.getFloat(r_plus_one, c)));
+    (((1 - alpha) * (1 - beta) * (img.getFloat(r, c))) +
+    (alpha * (1 - beta) * (img.getFloat(r_plus_one, c))) +
+    ((1 - alpha) * beta * (img.getFloat(r, c_plus_one))) +
+    (alpha * beta * (img.getFloat(r_plus_one, c_plus_one))));
 
   return result; // return interpolated pixel
 }
