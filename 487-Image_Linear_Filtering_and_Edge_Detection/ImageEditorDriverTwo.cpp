@@ -3,11 +3,12 @@
  * @brief     Program takes an input image named "test2.gif" and outputs
  *              two images called "smooth.gif" and "edges.gif" which show the
  *              greyscale image smoothed using simple 1/4, 1/2, 1/4 gaussian
- *              linear filtering and edging using a threshhold of 10.
+ *              linear filtering and edging using a threshhold of 10 and non
+ *              maximum suppression for edges.
  * 
  * @details   main method drives program through 9 nine steps which take input
- *              image, smoothes the image, prints out the smoothed image
- *              creates edge detection gradient images in x and y direction 
+ *              image, smoothes the image, prints out the smoothed image,
+ *              creates edge detection gradient images in x and y direction ,
  *              combine the gradient images, and creates an edge image based on 
  *              the created magnitude given threshold and maximus suppression.
  *
@@ -73,12 +74,19 @@ bool pixelInImage(const Image& img, int row, int col) {
 }
 
 /**
- * @brief applies linear filtering using passed in kernel
+ * @brief Convolves image img with img knl with opposite pixel position pull for
+ *          assoc/commut interactions.
+ * 
+ * @details Convolves images by applying kernel weights to flipped pixel in
+ *            order to calculate pixel value using passed in kernel weights.
+ *          Any size kernel is allowed as long as kernel is passed in with ass
+ *            kernel_cnt struct created with the same knl Image object
  * 
  * @param img input image to get original values from
  * @param knl knl to obtain weighted values
  * @param knl_cnt center of the kernel
- * @return new image that has been filtered
+ * @return new image which is the result of convolving the two images (or image
+ *          with the kernel, assumingly)
  */
 Image convolveImage(const Image& img, const Image& knl, center knl_cnt) {
 
@@ -128,17 +136,27 @@ Image convolveImage(const Image& img, const Image& knl, center knl_cnt) {
             } else if (col - col_offset > img.getCols() - 1) {
               col_correct = -1 * (img.getCols() - 1 - col - col_offset);
             }
-            pix_knl_sum += (float)img.getFloat(row - row_offset + row_correct,
-                                        col - col_offset + col_correct) *
+
+            // Add to sum of multiplied weights
+            pix_knl_sum +=
+              (float)img.getFloat(img.getRows() - 1 - row - row_offset - row_correct,
+                                  img.getCols() - 1 - col - col_offset - col_correct) *
               knl.getFloat(knl_row, knl_col);
-            result.setFloat(row, col, pix_knl_sum);
+            result.setFloat(img.getRows() - 1 - row,
+                            img.getCols() - 1 - col,
+                            pix_knl_sum);
 
           } else {
 
             // If within image, img(corrected pix) * knl weight
-            pix_knl_sum += (float)img.getFloat(row - row_offset, col - col_offset) *
+            pix_knl_sum +=
+              (float)img.getFloat(img.getRows() - 1 - row + row_offset,
+                                  img.getCols() - 1 - col + col_offset) *
               knl.getFloat(knl_row, knl_col);
-            result.setFloat(row, col, pix_knl_sum);
+
+            result.setFloat(img.getRows() - 1 - row,
+                            img.getCols() - 1 - col,
+                            pix_knl_sum);
           }
 
           // Decrement offset to subtract one less
@@ -293,34 +311,43 @@ pixel interpolate(const Image& img, float d_col, float d_row) {
   int c_plus_one = c + 1;
   int r_plus_one = r + 1;
 
+  // Conditionals below ensure no out of pixel query
+  // If out of pixel query, pulls closest pixel in picture
   if (c < 0) {
     c = 0;
   }
 
+  // Out of pixel conditional
   if (c > img.getCols() - 1) {
     c = img.getCols() - 1;
   }
 
+  // Out of pixel conditional
   if (c_plus_one < 0) {
     c_plus_one = 0;
   }
 
+  // Out of pixel conditional
   if (c_plus_one > img.getCols() - 1) {
     c_plus_one = img.getCols() - 1;
   }
 
+  // Out of pixel conditional
   if (r < 0) {
     r = 0;
   }
 
+  // Out of pixel conditional
   if (r > img.getRows() - 1) {
     r = img.getRows() - 1;
   }
 
+  // Out of pixel conditional
   if (r_plus_one < 0) {
     r_plus_one = 0;
   }
 
+  // Out of pixel conditional
   if (r_plus_one > img.getRows() - 1) {
     r_plus_one = img.getRows() - 1;
   }
@@ -388,7 +415,7 @@ int main(int argc, char* argv[]) {
 
   // STARTING IMAGE AS FLOAT
   // Test image for after image converted to float
-  img.writeFloatImage("before_smooth.gif");
+  //img.writeFloatImage("before_smooth.gif");
 
   // STEP 4A CREATE HARD CODED GAUUSSIAN FOR SMOOTHING
   // Create hardcoded kernels for Gaussian representative smoothing
@@ -431,15 +458,16 @@ int main(int argc, char* argv[]) {
   // Convolve images to create gx and gy with gradient x and gradient y
   Image gx = convolveImage(img, gradient_x, gx_knl_cnt);
   Image gy = convolveImage(img, gradient_y, gy_knl_cnt);
-  gx.writeFloatImage("gx.gif");
-  gy.writeFloatImage("gy.gif");
 
-  // Print after_gx image and after_gy image
-  Image after_gx = createByteImage(gx);
-  Image after_gy = createByteImage(gy);
+  // GX and GY float images for testing
+  //gx.writeFloatImage("gx.gif");
+  //gy.writeFloatImage("gy.gif");
 
-  after_gx.writeGreyImage("after_gx.gif");
-  after_gy.writeGreyImage("after_gy.gif");
+  // Print after_gx image and after_gy image for testing
+  //Image after_gx = createByteImage(gx);
+  //Image after_gy = createByteImage(gy);
+  //after_gx.writeGreyImage("after_gx.gif");
+  //after_gy.writeGreyImage("after_gy.gif");
 
   // STEP 7 Gradient Magnitude--------------------------------------------------
 
@@ -466,11 +494,9 @@ int main(int argc, char* argv[]) {
       gmag.setFloat(row, col, sqrt_gx_gy);
     }
   }
-  gmag.writeFloatImage("gmag.gif");
 
-  // Print after_gmag image
-  Image after_gmag = createByteImage(gmag);
-  after_gmag.writeGreyImage("after_gmag.gif");
+  // Print after_gmag image for testing
+  //gmag.writeFloatImage("gmag.gif");
 
   // Step 8 Edge Image----------------------------------------------------------
 
@@ -500,6 +526,9 @@ int main(int argc, char* argv[]) {
         float gx_over_gmag = gx.getFloat(row, col) / gmag.getFloat(row, col);
         float gy_over_gmag = gy.getFloat(row, col) / gmag.getFloat(row, col);
 
+
+        // Conditionals below ensure no pixel out of image queried, if out of
+        // image pixel queried, pulls closets pixel in image
         float r_col = col + gx_over_gmag;
         if (r_col > gmag.getCols() - 1) {
           r_col = (float)(gmag.getCols() - 1);
@@ -507,6 +536,7 @@ int main(int argc, char* argv[]) {
           r_col = 0;
         }
 
+        // Out of image conditional
         float r_row = row + gy_over_gmag;
         if (r_row > gmag.getRows() - 1) {
           r_row = (float)(gmag.getRows() - 1);
@@ -514,6 +544,7 @@ int main(int argc, char* argv[]) {
           r_row = 0;
         }
 
+        // Out of image conditional
         float p_col = col - gx_over_gmag;
         if (p_col < 0) {
           p_col = 0;
@@ -521,6 +552,7 @@ int main(int argc, char* argv[]) {
           p_col = (float)(gmag.getCols() - 1);
         }
 
+        // Out of image conditional
         float p_row = row - gy_over_gmag;
         if (p_row < 0) {
           p_row = 0;
@@ -528,17 +560,25 @@ int main(int argc, char* argv[]) {
           p_row = (float)(gmag.getRows() - 1);
         }
 
+        // Interpolate the values for and p
         float r_val = interpolate(gmag, r_col, r_row).floatVal;
         float p_val = interpolate(gmag, p_col, p_row).floatVal;
         
+        // Comparison to ensure non-maximum suppression, only largest value from
+        // gradient
+        // Set to max 255 if this is local max
         if (gmag.getFloat(row, col) > r_val &&
             gmag.getFloat(row, col) > p_val) {
           result_edge.setFloat(row, col, 255);
         } else {
+
+          // Sets to 0 if not max
           result_edge.setFloat(row, col, 0);
         }
 
       } else {
+        
+        // Set to 0 if gradient magnitude does not meet threshhold
         result_edge.setFloat(row, col, 0);
       }
     }
